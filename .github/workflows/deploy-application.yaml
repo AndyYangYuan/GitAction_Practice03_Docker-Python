@@ -1,0 +1,66 @@
+name: "sample-demo"
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+
+env:
+  AWS_REGION: "ap-southeast-2"
+  APPLICATION: "sample-demo"
+  VERSION: "1.0.1"
+
+jobs:
+  build-deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set variables
+        id: setvars
+        run: |
+          if [[ "${{github.base_ref}}" == "master" || "${{github.ref}}" == "refs/heads/master" ]]; then
+            echo "::set-output name=aws_account_id::038740210852"
+            echo "::set-output name=environment::prod"
+          fi
+          if [[ "${{github.base_ref}}" == "develop" || "${{github.ref}}" == "refs/heads/develop" ]]; then
+            echo "::set-output name=aws_account_id::038740210852"
+            echo "::set-output name=environment::dev"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy ecr repo sample demo
+        id: cloudformation-ecr
+        env:
+          APP_NAME: "sample-demo"
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.APPLICATION }}-${{ steps.setvars.outputs.environment }}-stack
+          template: ./cloudformation/sample-stack.yaml
+          no-fail-on-empty-changeset: "1"
+          parameter-overrides: >-
+            ServiceName=${{ env.APPLICATION }},
+            DeploymentBucketName=${{ env.APPLICATION }}-${{ steps.setvars.outputs.environment }}-deployment
+
+      - name: Docker and deploy
+        id: docker-build
+        env:
+          ECR_URL: ${{ steps.setvars.outputs.aws_account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        run: |
+          # Retrieve an authentication token and authenticate your Docker client to your registry.
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${{ env.ECR_URL }}
+          # Build your Docker image using the following command.
+          docker build -t ${{ env.APPLICATION }}:${{ env.VERSION }} .
+          # After the build completes, tag your image so you can push the image to this repository
+          docker tag ${{ env.APPLICATION }}:${{ env.VERSION }} ${{ env.ECR_URL }}/${{ env.APPLICATION }}:${{ env.VERSION }}
+          # Run the following command to push this image to your newly created AWS repository
+          docker push ${{ env.ECR_URL }}/${{ env.APPLICATION }}:${{ env.VERSION }}

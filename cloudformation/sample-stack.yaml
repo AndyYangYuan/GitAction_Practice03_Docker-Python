@@ -1,0 +1,63 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'This is the ECR repository to host Docker Image'
+Parameters:
+  ServiceName:
+    Type: String
+  DeploymentBucketName:
+    Type: String
+    Description: S3 bucket for deployment of necessary packages
+Resources:
+  EcrRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref ServiceName
+      ImageScanningConfiguration:
+        ScanOnPush: True
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: !Ref AWS::AccountId
+            Action: "*"
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+      IntelligentTieringConfigurations:
+          - Id: Tier1
+            Status: Enabled
+            Tierings:
+              - AccessTier: ARCHIVE_ACCESS
+                Days: 90
+              - AccessTier: DEEP_ARCHIVE_ACCESS
+                Days: 180
+      BucketName: !Sub ${DeploymentBucketName}
+
+Outputs:
+  StackName:
+    Description: 'Stack Name'
+    Value: !Sub '${AWS::StackName}'
+    Export:
+      Name: !Sub '${ServiceName}-ecr-stackname'
+  EcrRepositoryArn:
+    Description: 'Ecr Repository Arn'
+    Value: !GetAtt EcrRepository.Arn
+    Export:
+      Name: !Sub '${ServiceName}-EcrRepository-Arn'
+  DeploymentBucket:
+    Description: The name of deployment bucket
+    Value: !Ref DeploymentBucket 
+    Export:
+      Name: DeploymentBucket

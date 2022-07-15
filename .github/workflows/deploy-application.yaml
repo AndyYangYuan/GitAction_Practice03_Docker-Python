@@ -20,11 +20,11 @@ jobs:
         id: setvars
         run: |
           if [[ "${{github.base_ref}}" == "master" || "${{github.ref}}" == "refs/heads/master" ]]; then
-            echo "::set-output name=aws_account_id::038740210852"
+            echo "::set-output name=aws_account_id::765997727413"
             echo "::set-output name=environment::prod"
           fi
           if [[ "${{github.base_ref}}" == "develop" || "${{github.ref}}" == "refs/heads/develop" ]]; then
-            echo "::set-output name=aws_account_id::038740210852"
+            echo "::set-output name=aws_account_id::765997727413"
             echo "::set-output name=environment::dev"
           fi
 

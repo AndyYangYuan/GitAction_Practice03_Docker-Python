@@ -3,7 +3,7 @@ name: "sample-demo"
 on:
   push:
     branches:
-      - master
+      - main
       - develop
 
 env:
@@ -19,7 +19,7 @@ jobs:
       - name: Set variables
         id: setvars
         run: |
-          if [[ "${{github.base_ref}}" == "master" || "${{github.ref}}" == "refs/heads/master" ]]; then
+          if [[ "${{github.base_ref}}" == "main" || "${{github.ref}}" == "refs/heads/main" ]]; then
             echo "::set-output name=aws_account_id::765997727413"
             echo "::set-output name=environment::prod"
           fi
